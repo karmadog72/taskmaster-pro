@@ -88,13 +88,14 @@ $("#trash").droppable({
   accept: ".card .list-group-item",
   tolerance: "touch",
   drop: function (event, ui) {
-    console.log("drop");
+    // remove dragged element from the dom
+    ui.draggable.remove();
   },
   over: function (event, ui) {
-    console.log("over");
+    console.log(ui);
   },
   out: function (event, ui) {
-    console.log("out");
+    console.log(ui);
   },
 });
 
@@ -178,7 +179,6 @@ $("#task-form-modal .btn-primary").click(function () {
   // get form values
   var taskText = $("#modalTaskDescription").val();
   var taskDate = $("#modalDueDate").val();
-
   if (taskText && taskDate) {
     createTask(taskText, taskDate, "toDo");
 
@@ -196,12 +196,16 @@ $("#task-form-modal .btn-primary").click(function () {
 });
 
 $(".list-group").on("click", "p", function () {
+  // get current text of p element
   var text = $(this).text().trim();
-});
 
-var textInput = $("<textarea>").addClass("form-control").val(text);
-$(this).replaceWith(textInput);
-textInput.trigger("focus");
+  // replace p element with a new textarea
+  var textInput = $("<textarea>").addClass("form-control").val(text);
+  $(this).replaceWith(textInput);
+
+  // auto focus new element
+  textInput.trigger("focus");
+});
 
 // remove all tasks
 $("#remove-tasks").on("click", function () {
