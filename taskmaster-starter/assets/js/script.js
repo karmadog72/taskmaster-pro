@@ -41,22 +41,46 @@ var saveTasks = function () {
   localStorage.setItem("tasks", JSON.stringify(tasks));
 };
 
+var auditTask = function (taskEl) {
+  // get date from task element
+  var date = $(taskEl).find("span").text().trim();
+
+  console.log(date);
+
+  // convert to moment object at 5:00pm
+  var time = moment(date, "L").set("hour", 17);
+
+  console.log(time);
+
+  // remove any old classes from element
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+
+  // apply new class if task is near/over due date
+  if (moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger");
+  } else if (Math.abs(moment().diff(time, "days")) <= 2) {
+    $(taskEl).addClass("list-group-item-warning");
+  }
+};
+
+// enable draggable/sortable feature on list-group elements
 $(".card .list-group").sortable({
+  // enable dragging across lists
   connectWith: $(".card .list-group"),
   scroll: false,
   tolerance: "pointer",
   helper: "clone",
-  activate: function (event) {
-    console.log("activate", this);
+  activate: function (event, ui) {
+    console.log(ui);
   },
-  deactivate: function (event) {
-    console.log("deactivate", this);
+  deactivate: function (event, ui) {
+    console.log(ui);
   },
   over: function (event) {
-    console.log("over", event.target);
+    console.log(event);
   },
   out: function (event) {
-    console.log("out", event.target);
+    console.log(event);
   },
   update: function () {
     var tempArr = [];
@@ -84,6 +108,7 @@ $(".card .list-group").sortable({
   },
 });
 
+// trash icon can be dropped onto
 $("#trash").droppable({
   accept: ".card .list-group-item",
   tolerance: "touch",
@@ -99,67 +124,10 @@ $("#trash").droppable({
   },
 });
 
-$(".list-group").on("blur", "textarea", function () {
-  // get the textarea's current value/text
-  var text = $(this).val().trim();
-
-  // get the parent ul's id attribute
-  var status = $(this).closest(".list-group").attr("id").replace("list-", "");
-
-  // get the task's position in the list of other li elements
-  var index = $(this).closest(".list-group-item").index();
-
-  // update task in array and re-save to localstorage
-  tasks[status][index].text = text;
-  saveTasks();
-
-  //recreate p element
-  var taskP = $("<p>").addClass("m-1").text(text);
-
-  //replace textarea with p element
-  $(this).replaceWith(taskP);
-});
-
-// due date was clicked
-$(".list-group").on("click", "span", function () {
-  // get current text
-  var date = $(this).text().trim();
-
-  // create new input element
-  var dateInput = $("<input>")
-    .attr("type", "text")
-    .addClass("form-control")
-    .val(date);
-
-  // swap out elements
-  $(this).replaceWith(dateInput);
-
-  // automatically focus on new element
-  dateInput.trigger("focus");
-});
-
-// value of due date was changed
-$(".list-group").on("blur", "input[type='text']", function () {
-  // get current text
-  var date = $(this).val().trim();
-
-  // get the parent ul's id attribute
-  var status = $(this).closest(".list-group").attr("id").replace("list-", "");
-
-  // get the task's position in the list of other li elements
-  var index = $(this).closest(".list-group-item").index();
-
-  // update task in array and re-save to localstorage
-  tasks[status][index].date = date;
-  saveTasks();
-
-  // recreate span element with bootstrap classes
-  var taskSpan = $("<span>")
-    .addClass("badge badge-primary badge-pill")
-    .text(date);
-
-  // replace input with span element
-  $(this).replaceWith(taskSpan);
+// convert text field into a jquery date picker
+$("#modalDueDate").datepicker({
+  // force user to select a future date
+  minDate: 1,
 });
 
 // modal was triggered
@@ -179,6 +147,7 @@ $("#task-form-modal .btn-primary").click(function () {
   // get form values
   var taskText = $("#modalTaskDescription").val();
   var taskDate = $("#modalDueDate").val();
+
   if (taskText && taskDate) {
     createTask(taskText, taskDate, "toDo");
 
@@ -195,6 +164,7 @@ $("#task-form-modal .btn-primary").click(function () {
   }
 });
 
+// task text was clicked
 $(".list-group").on("click", "p", function () {
   // get current text of p element
   var text = $(this).text().trim();
@@ -207,12 +177,78 @@ $(".list-group").on("click", "p", function () {
   textInput.trigger("focus");
 });
 
+// editable field was un-focused
+$(".list-group").on("blur", "textarea", function () {
+  // get current value of textarea
+  var text = $(this).val();
+
+  // get status type and position in the list
+  var status = $(this).closest(".list-group").attr("id").replace("list-", "");
+  var index = $(this).closest(".list-group-item").index();
+
+  // update task in array and re-save to localstorage
+  tasks[status][index].text = text;
+  saveTasks();
+
+  // recreate p element
+  var taskP = $("<p>").addClass("m-1").text(text);
+
+  // replace textarea with new content
+  $(this).replaceWith(taskP);
+});
+
+// due date was clicked
+$(".list-group").on("click", "span", function () {
+  // get current text
+  var date = $(this).text().trim();
+
+  // create new input element
+  var dateInput = $("<input>")
+    .attr("type", "text")
+    .addClass("form-control")
+    .val(date);
+  $(this).replaceWith(dateInput);
+
+  // enable jquery ui date picker
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function () {
+      // when calendar is closed, force a "change" event
+      $(this).trigger("change");
+    },
+  });
+
+  // automatically bring up the calendar
+  dateInput.trigger("focus");
+});
+
+// value of due date was changed
+$(".list-group").on("change", "input[type='text']", function () {
+  var date = $(this).val();
+
+  // get status type and position in the list
+  var status = $(this).closest(".list-group").attr("id").replace("list-", "");
+  var index = $(this).closest(".list-group-item").index();
+
+  // update task in array and re-save to localstorage
+  tasks[status][index].date = date;
+  saveTasks();
+
+  // recreate span and insert in place of input element
+  var taskSpan = $("<span>")
+    .addClass("badge badge-primary badge-pill")
+    .text(date);
+  $(this).replaceWith(taskSpan);
+  auditTask($(taskSpan).closest(".list-group-item"));
+});
+
 // remove all tasks
 $("#remove-tasks").on("click", function () {
   for (var key in tasks) {
     tasks[key].length = 0;
     $("#list-" + key).empty();
   }
+  console.log(tasks);
   saveTasks();
 });
 
